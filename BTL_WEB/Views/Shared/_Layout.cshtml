@@ -1,9 +1,16 @@
-﻿<!DOCTYPE html>
+@using Microsoft.AspNetCore.Localization
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<BTL_WEB.Resources.SharedResource> Localizer
+@{
+    var requestCulture = Context.Features.Get<IRequestCultureFeature>();
+    var currentCulture = requestCulture?.RequestCulture.UICulture.Name ?? "vi-VN";
+}
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - BTL_WEB</title>
+    <title>@ViewData["Title"] - PetCareHub</title>
     <script type="importmap"></script>
     <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
@@ -13,7 +20,7 @@
     <header>
         <nav class="navbar navbar-expand-sm navbar-toggleable-sm navbar-light bg-white border-bottom box-shadow mb-3">
             <div class="container-fluid">
-                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">BTL_WEB</a>
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">PetCareHub</a>
                 <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target=".navbar-collapse" aria-controls="navbarSupportedContent"
                         aria-expanded="false" aria-label="Toggle navigation">
                     <span class="navbar-toggler-icon"></span>
@@ -21,12 +28,49 @@
                 <div class="navbar-collapse collapse d-sm-inline-flex justify-content-between">
                     <ul class="navbar-nav flex-grow-1">
                         <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">Home</a>
+                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Index">@Localizer["Home"]</a>
                         </li>
-                        <li class="nav-item">
-                            <a class="nav-link text-dark" asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
-                        </li>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Dashboard" asp-action="Index">@Localizer["Dashboard"]</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Pets" asp-action="Index">@Localizer["Pets"]</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Appointments" asp-action="Index">@Localizer["Appointments"]</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="AdoptionRequests" asp-action="Index">@Localizer["Adoption"]</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link text-dark" asp-controller="Payments" asp-action="Index">@Localizer["Payments"]</a>
+                            </li>
+                        }
                     </ul>
+                    <div class="d-flex align-items-center gap-2">
+                        <form asp-controller="Language" asp-action="SetLanguage" method="post" class="d-flex align-items-center gap-2">
+                            @Html.AntiForgeryToken()
+                            <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString.ToString())" />
+                            <select name="culture" class="form-select form-select-sm" onchange="this.form.submit()">
+                                <option value="vi-VN" selected="@(currentCulture == "vi-VN")">@Localizer["Vietnamese"]</option>
+                                <option value="en-US" selected="@(currentCulture == "en-US")">@Localizer["English"]</option>
+                            </select>
+                        </form>
+                        @if (User.Identity?.IsAuthenticated == true)
+                        {
+                            <span class="text-muted small">@(User.Identity.Name)</span>
+                            <form asp-controller="Account" asp-action="Logout" method="post">
+                                @Html.AntiForgeryToken()
+                                <button type="submit" class="btn btn-outline-secondary btn-sm">@Localizer["Logout"]</button>
+                            </form>
+                        }
+                        else
+                        {
+                            <a class="btn btn-primary btn-sm" asp-controller="Account" asp-action="Login">@Localizer["Login"]</a>
+                        }
+                    </div>
                 </div>
             </div>
         </nav>
@@ -39,7 +83,7 @@
 
     <footer class="border-top footer text-muted">
         <div class="container">
-            &copy; 2026 - BTL_WEB - <a asp-area="" asp-controller="Home" asp-action="Privacy">Privacy</a>
+            &copy; 2026 - PetCareHub
         </div>
     </footer>
     <script src="~/lib/jquery/dist/jquery.min.js"></script>

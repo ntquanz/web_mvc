@@ -1,0 +1,103 @@
+@model BTL_WEB.Helpers.PaginatedList<BTL_WEB.Models.Service>
+@using Microsoft.AspNetCore.Mvc.Rendering
+@{
+    ViewData["Title"] = "Services";
+    var categories = ViewBag.Categories as List<SelectListItem> ?? new();
+    var currentPageSize = (int)(ViewBag.PageSize ?? 10);
+}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Services</h1>
+    <div class="d-flex gap-2">
+        <a asp-controller="ServiceCategories" asp-action="Index" class="btn btn-outline-secondary">Categories</a>
+        <a asp-action="Create" class="btn btn-primary">Create Service</a>
+    </div>
+</div>
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input name="keyword" value="@ViewBag.Keyword" class="form-control" placeholder="Search service" />
+    </div>
+    <div class="col-md-3">
+        <select name="categoryId" class="form-select" asp-items="categories">
+            <option value="">All categories</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select name="status" class="form-select">
+            <option value="">All status</option>
+            @if ((string?)ViewBag.Status == "Active")
+            {
+                <option value="Active" selected>Active</option>
+            }
+            else
+            {
+                <option value="Active">Active</option>
+            }
+            @if ((string?)ViewBag.Status == "Inactive")
+            {
+                <option value="Inactive" selected>Inactive</option>
+            }
+            else
+            {
+                <option value="Inactive">Inactive</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-1">
+        <select name="pageSize" class="form-select">
+            @foreach (var size in new[] { 5, 10, 20 })
+            {
+                if (currentPageSize == size)
+                {
+                    <option value="@size" selected>@size</option>
+                }
+                else
+                {
+                    <option value="@size">@size</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <button type="submit" class="btn btn-outline-primary w-100">Filter</button>
+    </div>
+</form>
+<div class="mb-2 text-muted">Total: @Model.TotalItems services</div>
+<table class="table table-bordered">
+    <thead><tr><th>Name</th><th>Category</th><th>Price</th><th>Duration</th><th>Status</th><th></th></tr></thead>
+    <tbody>
+    @foreach (var item in Model.Items)
+    {
+        <tr>
+            <td>@item.ServiceName</td>
+            <td>@item.Category.CategoryName</td>
+            <td>@item.Price.ToString("N0")</td>
+            <td>@item.DurationMinutes min</td>
+            <td>@item.Status</td>
+            <td>
+                <a asp-action="Details" asp-route-id="@item.ServiceId" class="btn btn-sm btn-outline-info">Details</a>
+                <a asp-action="Edit" asp-route-id="@item.ServiceId" class="btn btn-sm btn-outline-primary">Edit</a>
+                <a asp-action="Delete" asp-route-id="@item.ServiceId" class="btn btn-sm btn-outline-danger">Delete</a>
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+<div class="d-flex justify-content-between align-items-center">
+    <span>Page @Model.PageIndex / @Model.TotalPages</span>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary @(Model.HasPreviousPage ? "" : "disabled")"
+           asp-action="Index"
+           asp-route-page="@(Model.PageIndex - 1)"
+           asp-route-pageSize="@Model.PageSize"
+           asp-route-keyword="@ViewBag.Keyword"
+           asp-route-categoryId="@ViewBag.CategoryId"
+           asp-route-status="@ViewBag.Status">Previous</a>
+        <a class="btn btn-outline-secondary @(Model.HasNextPage ? "" : "disabled")"
+           asp-action="Index"
+           asp-route-page="@(Model.PageIndex + 1)"
+           asp-route-pageSize="@Model.PageSize"
+           asp-route-keyword="@ViewBag.Keyword"
+           asp-route-categoryId="@ViewBag.CategoryId"
+           asp-route-status="@ViewBag.Status">Next</a>
+    </div>
+</div>

@@ -1,0 +1,28 @@
+@model BTL_WEB.ViewModels.Dashboard.DashboardViewModel
+
+@{
+    ViewData["Title"] = "Dashboard";
+}
+
+<h1 class="mb-4">Dashboard</h1>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Total pets:</strong> @Model.TotalPets</div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Available pets:</strong> @Model.AvailablePets</div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Adopted pets:</strong> @Model.AdoptedPets</div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Pending appointments:</strong> @Model.PendingAppointments</div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Pending adoption requests:</strong> @Model.PendingAdoptionRequests</div></div>
+    </div>
+    <div class="col-md-4">
+        <div class="card"><div class="card-body"><strong>Paid payments total:</strong> @Model.PaidPaymentsTotal.ToString("N0")</div></div>
+    </div>
+</div>

@@ -1,0 +1,46 @@
+@model BTL_WEB.ViewModels.Services.ServiceFormViewModel
+
+<form asp-action="@(Model.ServiceId.HasValue ? "Edit" : "Create")" method="post">
+    @if (Model.ServiceId.HasValue)
+    {
+        <input asp-for="ServiceId" type="hidden" />
+    }
+    <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label asp-for="ServiceName" class="form-label"></label>
+            <input asp-for="ServiceName" class="form-control" />
+            <span asp-validation-for="ServiceName" class="text-danger"></span>
+        </div>
+        <div class="col-md-6">
+            <label asp-for="CategoryId" class="form-label">Category</label>
+            <select asp-for="CategoryId" class="form-select" asp-items="Model.CategoryOptions"></select>
+            <span asp-validation-for="CategoryId" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Price" class="form-label"></label>
+            <input asp-for="Price" class="form-control" />
+            <span asp-validation-for="Price" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="DurationMinutes" class="form-label"></label>
+            <input asp-for="DurationMinutes" class="form-control" />
+            <span asp-validation-for="DurationMinutes" class="text-danger"></span>
+        </div>
+        <div class="col-md-4">
+            <label asp-for="Status" class="form-label"></label>
+            <select asp-for="Status" class="form-select">
+                <option value="Active">Active</option>
+                <option value="Inactive">Inactive</option>
+            </select>
+        </div>
+        <div class="col-12">
+            <label asp-for="Description" class="form-label"></label>
+            <textarea asp-for="Description" class="form-control" rows="3"></textarea>
+        </div>
+    </div>
+    <div class="mt-3">
+        <button type="submit" class="btn btn-primary">Save</button>
+        <a asp-action="Index" class="btn btn-secondary">Back</a>
+    </div>
+</form>

@@ -1,0 +1,136 @@
+@model BTL_WEB.Helpers.PaginatedList<BTL_WEB.Models.Pet>
+@using Microsoft.AspNetCore.Mvc.Rendering
+
+@{
+    ViewData["Title"] = "Pets";
+    var branches = ViewBag.Branches as List<SelectListItem> ?? new();
+    var currentPageSize = (int)(ViewBag.PageSize ?? 10);
+}
+
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0">Pet Management</h1>
+    @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+    {
+        <a asp-action="Create" class="btn btn-primary">Create Pet</a>
+    }
+</div>
+
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-3">
+        <input name="name" value="@ViewBag.Name" class="form-control" placeholder="Search by name" />
+    </div>
+    <div class="col-md-2">
+        <input name="species" value="@ViewBag.Species" class="form-control" placeholder="Species" />
+    </div>
+    <div class="col-md-3">
+        <select name="branchId" class="form-select" asp-items="branches">
+            <option value="">All branches</option>
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select name="adoptionStatus" class="form-select">
+            <option value="">All status</option>
+            @if ((string?)ViewBag.AdoptionStatus == "Available")
+            {
+                <option value="Available" selected>Available</option>
+            }
+            else
+            {
+                <option value="Available">Available</option>
+            }
+            @if ((string?)ViewBag.AdoptionStatus == "Pending")
+            {
+                <option value="Pending" selected>Pending</option>
+            }
+            else
+            {
+                <option value="Pending">Pending</option>
+            }
+            @if ((string?)ViewBag.AdoptionStatus == "Adopted")
+            {
+                <option value="Adopted" selected>Adopted</option>
+            }
+            else
+            {
+                <option value="Adopted">Adopted</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-1">
+        <select name="pageSize" class="form-select">
+            @foreach (var size in new[] { 5, 10, 20 })
+            {
+                if (currentPageSize == size)
+                {
+                    <option value="@size" selected>@size</option>
+                }
+                else
+                {
+                    <option value="@size">@size</option>
+                }
+            }
+        </select>
+    </div>
+    <div class="col-md-1">
+        <button type="submit" class="btn btn-outline-primary w-100">Go</button>
+    </div>
+</form>
+
+<div class="mb-2 text-muted">Total: @Model.TotalItems pets</div>
+
+<table class="table table-bordered table-striped">
+    <thead>
+        <tr>
+            <th>Name</th>
+            <th>Species</th>
+            <th>Branch</th>
+            <th>Owner</th>
+            <th>Adoption</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+    @foreach (var item in Model.Items)
+    {
+        <tr>
+            <td>@item.Name</td>
+            <td>@item.Species</td>
+            <td>@item.Branch.BranchName</td>
+            <td>@(item.Owner?.FullName ?? "-")</td>
+            <td>@item.AdoptionStatus</td>
+            <td>@item.Status</td>
+            <td class="text-nowrap">
+                <a asp-action="Details" asp-route-id="@item.PetId" class="btn btn-sm btn-outline-info">Details</a>
+                @if (User.IsInRole("Admin") || User.IsInRole("Staff"))
+                {
+                    <a asp-action="Edit" asp-route-id="@item.PetId" class="btn btn-sm btn-outline-primary">Edit</a>
+                    <a asp-action="Delete" asp-route-id="@item.PetId" class="btn btn-sm btn-outline-danger">Delete</a>
+                }
+            </td>
+        </tr>
+    }
+    </tbody>
+</table>
+
+<div class="d-flex justify-content-between align-items-center">
+    <span>Page @Model.PageIndex / @Model.TotalPages</span>
+    <div class="d-flex gap-2">
+        <a class="btn btn-outline-secondary @(Model.HasPreviousPage ? "" : "disabled")"
+           asp-action="Index"
+           asp-route-page="@(Model.PageIndex - 1)"
+           asp-route-pageSize="@Model.PageSize"
+           asp-route-name="@ViewBag.Name"
+           asp-route-species="@ViewBag.Species"
+           asp-route-branchId="@ViewBag.BranchId"
+           asp-route-adoptionStatus="@ViewBag.AdoptionStatus">Previous</a>
+        <a class="btn btn-outline-secondary @(Model.HasNextPage ? "" : "disabled")"
+           asp-action="Index"
+           asp-route-page="@(Model.PageIndex + 1)"
+           asp-route-pageSize="@Model.PageSize"
+           asp-route-name="@ViewBag.Name"
+           asp-route-species="@ViewBag.Species"
+           asp-route-branchId="@ViewBag.BranchId"
+           asp-route-adoptionStatus="@ViewBag.AdoptionStatus">Next</a>
+    </div>
+</div>

@@ -1,6 +1,6 @@
+using System.Diagnostics;
 using BTL_WEB.Models;
 using Microsoft.AspNetCore.Mvc;
-using System.Diagnostics;
 
 namespace BTL_WEB.Controllers
 {
