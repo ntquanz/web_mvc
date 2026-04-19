@@ -55,7 +55,6 @@ public class ManagementController : Controller
 
         var pets = await petsQuery
             .OrderByDescending(p => p.CreatedAt)
-            .Take(40)
             .Select(p => new PetSummaryViewModel
             {
                 PetId = p.PetId,
@@ -216,19 +215,61 @@ public class ManagementController : Controller
 
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> CreateAppointment(int petId, int branchId, DateTime appointmentDateTime, int? selectedServiceId, string? notes)
+    public async Task<IActionResult> CreateAppointment(int? petId, int branchId, DateTime appointmentDateTime, int? selectedServiceId, string? notes, string? petSpecies, string? petBreed, string? petGender, string? returnUrl)
     {
         var userId = await ResolveCurrentUserIdAsync();
         var isStaffOrAdmin = IsStaffOrAdmin();
         if (!userId.HasValue)
         {
             TempData["ErrorMessage"] = "Không xác định được người dùng hiện tại.";
-            return RedirectToAction(nameof(Appointments));
+            return RedirectAfterCreateAppointment(returnUrl);
+        }
+
+        var selectedPetId = petId;
+        if (!selectedPetId.HasValue || selectedPetId.Value <= 0)
+        {
+            var fallbackPetQuery = _context.Pets
+                .AsNoTracking()
+                .AsQueryable();
+
+            if (!isStaffOrAdmin)
+            {
+                fallbackPetQuery = fallbackPetQuery.Where(p => p.OwnerId == userId.Value);
+            }
+
+            if (!string.IsNullOrWhiteSpace(petSpecies))
+            {
+                var species = petSpecies.Trim();
+                fallbackPetQuery = fallbackPetQuery.Where(p => p.Species == species);
+            }
+
+            if (!string.IsNullOrWhiteSpace(petBreed))
+            {
+                var breed = petBreed.Trim();
+                fallbackPetQuery = fallbackPetQuery.Where(p => p.Breed == breed);
+            }
+
+            if (!string.IsNullOrWhiteSpace(petGender))
+            {
+                var gender = petGender.Trim();
+                fallbackPetQuery = fallbackPetQuery.Where(p => p.Gender == gender);
+            }
+
+            selectedPetId = await fallbackPetQuery
+                .OrderByDescending(p => p.CreatedAt)
+                .Select(p => (int?)p.PetId)
+                .FirstOrDefaultAsync();
+        }
+
+        if (!selectedPetId.HasValue || selectedPetId.Value <= 0)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy thú cưng phù hợp với thông tin đã chọn.";
+            return RedirectAfterCreateAppointment(returnUrl);
         }
 
         var petExistsQuery = _context.Pets
             .AsNoTracking()
-            .Where(p => p.PetId == petId);
+            .Where(p => p.PetId == selectedPetId.Value);
 
         if (!isStaffOrAdmin)
         {
@@ -241,13 +282,13 @@ public class ManagementController : Controller
         if (!petExists || !branchExists || appointmentDateTime <= DateTime.Now)
         {
             TempData["ErrorMessage"] = "Thông tin lịch hẹn không hợp lệ.";
-            return RedirectToAction(nameof(Appointments));
+            return RedirectAfterCreateAppointment(returnUrl);
         }
 
         var appointment = new Appointment
         {
             UserId = userId.Value,
-            PetId = petId,
+            PetId = selectedPetId.Value,
             BranchId = branchId,
             AppointmentDateTime = appointmentDateTime,
             Status = "Pending",
@@ -278,7 +319,7 @@ public class ManagementController : Controller
         }
 
         TempData["SuccessMessage"] = "Đã tạo lịch hẹn thành công.";
-        return RedirectToAction(nameof(Appointments));
+        return RedirectAfterCreateAppointment(returnUrl);
     }
 
     public async Task<IActionResult> Appointments(string? status, DateTime? date, int? selectedServiceId)
@@ -359,7 +400,14 @@ public class ManagementController : Controller
         ViewBag.PetOptions = await petOptionsQuery
             .OrderBy(p => p.Name)
             .Take(100)
-            .Select(p => new { p.PetId, p.Name })
+            .Select(p => new
+            {
+                p.PetId,
+                p.Name,
+                p.Species,
+                p.Breed,
+                p.Gender
+            })
             .ToListAsync();
 
         ViewBag.BranchOptions = await _context.Branches
@@ -373,6 +421,22 @@ public class ManagementController : Controller
             .Where(s => s.Status == "Active")
             .OrderBy(s => s.ServiceName)
             .Select(s => new { s.ServiceId, s.ServiceName })
+            .ToListAsync();
+
+        ViewBag.PetSpeciesOptions = await _context.Pets
+            .AsNoTracking()
+            .Where(p => p.Species != null && p.Species != string.Empty)
+            .Select(p => p.Species)
+            .Distinct()
+            .OrderBy(x => x)
+            .ToListAsync();
+
+        ViewBag.PetBreedOptions = await _context.Pets
+            .AsNoTracking()
+            .Where(p => p.Breed != null && p.Breed != string.Empty)
+            .Select(p => p.Breed)
+            .Distinct()
+            .OrderBy(x => x)
             .ToListAsync();
 
         var appointmentIds = appointments.Select(a => a.AppointmentId).ToList();
@@ -599,7 +663,7 @@ public class ManagementController : Controller
 
     private Task<int?> ResolveCurrentUserIdAsync()
     {
-        var claimValue = User.FindFirstValue(ClaimTypes.NameIdentifier);
+        var claimValue = User.FindFirstValue(ClaimNames.UserId) ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
         if (int.TryParse(claimValue, out var userId))
         {
             return Task.FromResult<int?>(userId);
@@ -611,6 +675,16 @@ public class ManagementController : Controller
     private bool IsStaffOrAdmin()
     {
         return User.IsInRole(RoleNames.Admin) || User.IsInRole(RoleNames.Staff);
+    }
+
+    private IActionResult RedirectAfterCreateAppointment(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        return RedirectToAction(nameof(Appointments));
     }
 
     private IActionResult AdoptionRequestResponse(bool success, string message)
