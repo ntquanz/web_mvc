@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Mvc.Rendering;
 using Microsoft.EntityFrameworkCore;
+using System.Security.Claims;
 
 namespace BTL_WEB.Controllers;
 
@@ -65,6 +66,52 @@ public class ServicesController : Controller
     [HttpGet]
     public async Task<IActionResult> Catalog()
     {
+        ViewBag.BranchOptions = await _context.Branches
+            .AsNoTracking()
+            .OrderBy(b => b.BranchName)
+            .Select(b => new { b.BranchId, b.BranchName })
+            .ToListAsync();
+
+        ViewBag.AllPetOptions = await _context.Pets
+            .AsNoTracking()
+            .OrderBy(p => p.Name)
+            .Select(p => new
+            {
+                p.PetId,
+                p.OwnerId,
+                p.Name,
+                p.Species,
+                p.Breed,
+                p.Gender
+            })
+            .ToListAsync();
+
+        var currentUserId = await ResolveCurrentUserIdAsync();
+
+        if (currentUserId.HasValue)
+        {
+            var customerPetOptions = await _context.Pets
+                .AsNoTracking()
+                .Where(p => p.OwnerId == currentUserId.Value)
+                .OrderBy(p => p.Name)
+                .Select(p => new
+                {
+                    p.PetId,
+                    p.OwnerId,
+                    p.Name,
+                    p.Species,
+                    p.Breed,
+                    p.Gender
+                })
+                .ToListAsync();
+
+            ViewBag.CustomerPetOptions = customerPetOptions;
+        }
+        else
+        {
+            ViewBag.CustomerPetOptions = new List<object>();
+        }
+
         var groups = await _context.ServiceCategories
             .AsNoTracking()
             .OrderBy(x => x.CategoryName)
@@ -88,6 +135,27 @@ public class ServicesController : Controller
             .ToListAsync();
 
         return View(new ServiceCatalogViewModel { Groups = groups });
+    }
+
+    private async Task<int?> ResolveCurrentUserIdAsync()
+    {
+        var claimValue = User.FindFirstValue(ClaimNames.UserId) ?? User.FindFirstValue(ClaimTypes.NameIdentifier);
+        if (int.TryParse(claimValue, out var userId))
+        {
+            return userId;
+        }
+
+        if (User.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(User.Identity.Name))
+        {
+            return null;
+        }
+
+        var identityName = User.Identity.Name.Trim();
+        return await _context.Users
+            .AsNoTracking()
+            .Where(u => u.Username == identityName || u.Email == identityName)
+            .Select(u => (int?)u.UserId)
+            .FirstOrDefaultAsync();
     }
 
     public async Task<IActionResult> Create()

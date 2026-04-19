@@ -4,6 +4,7 @@
     ViewData["Title"] = "Dịch vụ chăm sóc";
     Layout = "~/Views/Shared/_LayoutPetcarehub.cshtml";
     var branches = ViewBag.BranchOptions as IEnumerable<dynamic> ?? [];
+    var allPets = ViewBag.AllPetOptions as IEnumerable<dynamic> ?? [];
     var customerPets = ViewBag.CustomerPetOptions as IEnumerable<dynamic> ?? [];
 }
 
@@ -234,7 +235,8 @@
         const genderFilter = document.getElementById('servicePetGender');
         const selectedPetId = document.getElementById('selectedPetIdFromService');
         const bookingButtons = document.querySelectorAll('.btn-service-book');
-        const customerPets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customerPets.Select(p => new { petId = (int)p.PetId, species = (string?)p.Species, breed = (string?)p.Breed, gender = (string?)p.Gender })));
+        const allPets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(allPets.Select(p => new { petId = (int)p.PetId, ownerId = (int?)p.OwnerId, species = (string?)p.Species, breed = (string?)p.Breed, gender = (string?)p.Gender })));
+        const customerPets = @Html.Raw(System.Text.Json.JsonSerializer.Serialize(customerPets.Select(p => new { petId = (int)p.PetId, ownerId = (int?)p.OwnerId, species = (string?)p.Species, breed = (string?)p.Breed, gender = (string?)p.Gender })));
 
         const pad = value => String(value).padStart(2, '0');
         const now = new Date();
@@ -277,12 +279,12 @@
             return [...new Set(values.filter(Boolean))].sort((a, b) => a.localeCompare(b, 'vi'));
         }
 
-        const speciesByCustomer = uniqueSorted(customerPets.map(p => p.species));
-        fillSelectOptions(speciesFilter, speciesByCustomer, 'Tất cả loài');
+        const speciesOptions = uniqueSorted(allPets.map(p => p.species));
+        fillSelectOptions(speciesFilter, speciesOptions, 'Tất cả loài');
 
         function refreshBreedOptions() {
             const species = normalize(speciesFilter?.value);
-            const breeds = uniqueSorted(customerPets
+            const breeds = uniqueSorted(allPets
                 .filter(p => !species || normalize(p.species) === species)
                 .map(p => p.breed));
             fillSelectOptions(breedFilter, breeds, 'Tất cả giống');
@@ -303,8 +305,10 @@
             });
 
             selectedPetId.value = matched.length ? String(matched[0].petId) : '';
-            if (!matched.length) {
-                message.textContent = 'Không tìm thấy thú cưng phù hợp bộ lọc của bạn.';
+            if (!customerPets.length) {
+                message.textContent = 'Tài khoản của bạn chưa có thú cưng, vui lòng thêm thú cưng trước khi đặt lịch.';
+            } else if (!matched.length) {
+                message.textContent = 'Bộ lọc đã chọn không khớp với thú cưng thuộc tài khoản của bạn.';
             } else {
                 message.textContent = '';
             }

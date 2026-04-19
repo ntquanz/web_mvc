@@ -18,6 +18,8 @@ public class AppointmentsPageViewModel
     public string? Status { get; set; }
     public DateTime? Date { get; set; }
     public int? SelectedServiceId { get; set; }
+    public string SortBy { get; set; } = "CreatedAt";
+    public string SortDirection { get; set; } = "desc";
     public List<AppointmentSummaryViewModel> Appointments { get; set; } = [];
     public List<AppointmentServiceSummaryViewModel> AppointmentServices { get; set; } = [];
 }

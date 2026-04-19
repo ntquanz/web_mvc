@@ -33,71 +33,77 @@
             <div class="alert alert-danger">@errorMessage</div>
         }
 
-        <div class="row mb-4">
-            <div class="col-md-12">
-                <div class="card p-3">
-                    <h5 class="mb-3">Danh sách thú cưng có thể nhận nuôi</h5>
-                    <div class="row">
-                        @if (Model.AvailablePets.Count == 0)
-                        {
-                            <div class="col-12">
-                                <div class="alert alert-light border text-center text-muted mb-0">Hiện chưa có thú cưng ở trạng thái Có sẵn.</div>
-                            </div>
-                        }
-                        else
-                        {
-                            @foreach (var pet in Model.AvailablePets)
+        @if (!isStaffOrAdmin)
+        {
+            <div class="row mb-4">
+                <div class="col-md-12">
+                    <div class="card p-3">
+                        <h5 class="mb-3">Danh sách thú cưng có thể nhận nuôi</h5>
+                        <div class="row">
+                            @if (Model.AvailablePets.Count == 0)
                             {
-                                <div class="col-md-4 mb-3">
-                                    <div class="card border-0 shadow-sm h-100">
-                                        <img src="@ResolveImageUrl(pet.PrimaryImageUrl)"
-                                             alt="@pet.Name"
-                                             class="card-img-top"
-                                             style="height:220px;object-fit:cover;"
-                                             onerror="this.onerror=null;this.src='@Url.Content("~/LayoutPetcare/images/gallery-1.jpg")';" />
-                                        <div class="card-body d-flex flex-column">
-                                            <h5 class="mb-2">@pet.Name</h5>
-                                            <p class="mb-1"><strong>Loài:</strong> @pet.Species</p>
-                                            <p class="mb-1"><strong>Giống:</strong> @pet.Breed</p>
-                                            <p class="mb-1"><strong>Giới tính:</strong> @pet.Gender</p>
-                                            <p class="mb-1"><strong>Chi nhánh:</strong> @pet.BranchName</p>
-                                            <p class="mb-3"><span class="badge @StatusDisplay.BadgeClass(pet.AdoptionStatus) px-2 py-1">@StatusDisplay.Label(pet.AdoptionStatus)</span></p>
-                                            <button type="button" class="btn btn-primary mt-auto btn-open-adoption" data-pet-id="@pet.PetId" data-pet-name="@pet.Name">Gửi yêu cầu</button>
-                                        </div>
-                                    </div>
+                                <div class="col-12">
+                                    <div class="alert alert-light border text-center text-muted mb-0">Hiện chưa có thú cưng ở trạng thái Có sẵn.</div>
                                 </div>
                             }
-                        }
+                            else
+                            {
+                                @foreach (var pet in Model.AvailablePets)
+                                {
+                                    <div class="col-md-4 mb-3">
+                                        <div class="card border-0 shadow-sm h-100">
+                                            <img src="@ResolveImageUrl(pet.PrimaryImageUrl)"
+                                                 alt="@pet.Name"
+                                                 class="card-img-top"
+                                                 style="height:220px;object-fit:cover;"
+                                                 onerror="this.onerror=null;this.src='@Url.Content("~/LayoutPetcare/images/gallery-1.jpg")';" />
+                                            <div class="card-body d-flex flex-column">
+                                                <h5 class="mb-2">@pet.Name</h5>
+                                                <p class="mb-1"><strong>Loài:</strong> @pet.Species</p>
+                                                <p class="mb-1"><strong>Giống:</strong> @pet.Breed</p>
+                                                <p class="mb-1"><strong>Giới tính:</strong> @pet.Gender</p>
+                                                <p class="mb-1"><strong>Chi nhánh:</strong> @pet.BranchName</p>
+                                                <p class="mb-3"><span class="badge @StatusDisplay.BadgeClass(pet.AdoptionStatus) px-2 py-1">@StatusDisplay.Label(pet.AdoptionStatus)</span></p>
+                                                <button type="button" class="btn btn-primary mt-auto btn-open-adoption" data-pet-id="@pet.PetId" data-pet-name="@pet.Name">Gửi yêu cầu</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                }
+                            }
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
+        }
 
-        <div class="modal fade" id="adoptionRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
-            <div class="modal-dialog" role="document">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title">Gửi yêu cầu nhận nuôi</h5>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="Close">
-                            <span aria-hidden="true">&times;</span>
-                        </button>
+        @if (!isStaffOrAdmin)
+        {
+            <div class="modal fade" id="adoptionRequestModal" tabindex="-1" role="dialog" aria-hidden="true">
+                <div class="modal-dialog" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title">Gửi yêu cầu nhận nuôi</h5>
+                            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </button>
+                        </div>
+                        <form method="post" asp-action="CreateAdoptionRequest">
+                            @Html.AntiForgeryToken()
+                            <div class="modal-body">
+                                <input type="hidden" id="requestPetId" name="petId" />
+                                <p class="mb-2">Thú cưng: <strong id="requestPetName"></strong></p>
+                                <label for="requestMessage">Lời nhắn</label>
+                                <textarea class="form-control" id="requestMessage" name="message" rows="4" required placeholder="Nhập lý do / mong muốn khi nhận nuôi"></textarea>
+                            </div>
+                            <div class="modal-footer">
+                                <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Hủy</button>
+                                <button type="submit" class="btn btn-primary">Gửi yêu cầu</button>
+                            </div>
+                        </form>
                     </div>
-                    <form method="post" asp-action="CreateAdoptionRequest">
-                        @Html.AntiForgeryToken()
-                        <div class="modal-body">
-                            <input type="hidden" id="requestPetId" name="petId" />
-                            <p class="mb-2">Thú cưng: <strong id="requestPetName"></strong></p>
-                            <label for="requestMessage">Lời nhắn</label>
-                            <textarea class="form-control" id="requestMessage" name="message" rows="4" required placeholder="Nhập lý do / mong muốn khi nhận nuôi"></textarea>
-                        </div>
-                        <div class="modal-footer">
-                            <button type="button" class="btn btn-outline-secondary" data-dismiss="modal">Hủy</button>
-                            <button type="submit" class="btn btn-primary">Gửi yêu cầu</button>
-                        </div>
-                    </form>
                 </div>
             </div>
-        </div>
+        }
 
         <div class="row mb-4">
             <div class="col-md-12">
@@ -162,13 +168,17 @@
                         <th>Ngày gửi</th>
                         <th>Trạng thái</th>
                         <th>Người duyệt</th>
+                        @if (isStaffOrAdmin)
+                        {
+                            <th>Duyệt yêu cầu</th>
+                        }
                     </tr>
                 </thead>
                 <tbody>
                     @if (Model.Requests.Count == 0)
                     {
                         <tr>
-                            <td colspan="@(isStaffOrAdmin ? 8 : 4)" class="text-center text-muted">Chưa có yêu cầu nhận nuôi.</td>
+                            <td colspan="@(isStaffOrAdmin ? 9 : 4)" class="text-center text-muted">Chưa có yêu cầu nhận nuôi.</td>
                         </tr>
                     }
                     else
@@ -187,6 +197,32 @@
                                 <td>@item.RequestDate.ToString("dd/MM/yyyy HH:mm")</td>
                                 <td><span class="badge @StatusDisplay.BadgeClass(item.Status)">@StatusDisplay.Label(item.Status)</span></td>
                                 <td>@item.ReviewedBy</td>
+                                @if (isStaffOrAdmin)
+                                {
+                                    <td class="text-nowrap">
+                                        @if (string.Equals(item.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+                                        {
+                                            <form method="post" asp-action="UpdateAdoptionRequestStatus" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="requestId" value="@item.RequestId" />
+                                                <input type="hidden" name="status" value="Approved" />
+                                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                                <button type="submit" class="btn btn-sm btn-success">Chấp nhận</button>
+                                            </form>
+                                            <form method="post" asp-action="UpdateAdoptionRequestStatus" class="d-inline">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="requestId" value="@item.RequestId" />
+                                                <input type="hidden" name="status" value="Rejected" />
+                                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
+                                                <button type="submit" class="btn btn-sm btn-outline-danger">Từ chối</button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">-</span>
+                                        }
+                                    </td>
+                                }
                             </tr>
                         }
                     }
@@ -288,15 +324,32 @@
     </div>
 </section>
 
-<script>
-    $(function () {
-        $('.btn-open-adoption').on('click', function () {
-            const petId = $(this).data('pet-id');
-            const petName = $(this).data('pet-name');
-            $('#requestPetId').val(petId);
-            $('#requestPetName').text(petName);
-            $('#requestMessage').val('');
-            $('#adoptionRequestModal').modal('show');
+@section Scripts {
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            const buttons = document.querySelectorAll('.btn-open-adoption');
+            if (!buttons.length) {
+                return;
+            }
+
+            const petIdInput = document.getElementById('requestPetId');
+            const petNameText = document.getElementById('requestPetName');
+            const messageInput = document.getElementById('requestMessage');
+
+            buttons.forEach(function (button) {
+                button.addEventListener('click', function () {
+                    const petId = button.getAttribute('data-pet-id') || '';
+                    const petName = button.getAttribute('data-pet-name') || '';
+
+                    if (petIdInput) petIdInput.value = petId;
+                    if (petNameText) petNameText.textContent = petName;
+                    if (messageInput) messageInput.value = '';
+
+                    if (window.jQuery) {
+                        window.jQuery('#adoptionRequestModal').modal('show');
+                    }
+                });
+            });
         });
-    });
-</script>
+    </script>
+}

@@ -1,4 +1,4 @@
-using BTL_WEB.Helpers;
+ using BTL_WEB.Helpers;
 using BTL_WEB.Models;
 using BTL_WEB.Models.ViewModels;
 using Microsoft.AspNetCore.Authorization;
@@ -30,7 +30,12 @@ public class ManagementController : Controller
         if (!string.IsNullOrWhiteSpace(searchTerm))
         {
             var keyword = searchTerm.Trim();
-            petsQuery = petsQuery.Where(p => p.Name.Contains(keyword) || (p.Breed != null && p.Breed.Contains(keyword)));
+            var searchPattern = $"%{keyword}%";
+
+            petsQuery = petsQuery.Where(p =>
+                EF.Functions.Like(EF.Functions.Collate(p.Name, "SQL_Latin1_General_CP1_CI_AI"), searchPattern) ||
+                EF.Functions.Like(EF.Functions.Collate(p.Species, "SQL_Latin1_General_CP1_CI_AI"), searchPattern) ||
+                (p.Breed != null && EF.Functions.Like(EF.Functions.Collate(p.Breed, "SQL_Latin1_General_CP1_CI_AI"), searchPattern)));
         }
 
         if (!string.IsNullOrWhiteSpace(species))
@@ -159,6 +164,57 @@ public class ManagementController : Controller
         return View(model);
     }
 
+    [HttpPost]
+    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateAppointmentStatus(int appointmentId, string status, string? returnUrl)
+    {
+        if (appointmentId <= 0 || string.IsNullOrWhiteSpace(status))
+        {
+            TempData["ErrorMessage"] = "Dữ liệu cập nhật trạng thái không hợp lệ.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        var targetStatus = NormalizeAppointmentStatus(status);
+        if (targetStatus is null)
+        {
+            TempData["ErrorMessage"] = "Trạng thái lịch hẹn không hợp lệ.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        var appointment = await _context.Appointments.FirstOrDefaultAsync(a => a.AppointmentId == appointmentId);
+        if (appointment is null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy lịch hẹn cần cập nhật.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        var currentStatus = NormalizeAppointmentStatus(appointment.Status);
+        if (currentStatus is null)
+        {
+            TempData["ErrorMessage"] = "Trạng thái hiện tại của lịch hẹn không hợp lệ.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        if (currentStatus == targetStatus)
+        {
+            TempData["SuccessMessage"] = "Lịch hẹn đã ở trạng thái này.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        if (!CanTransitionAppointmentStatus(currentStatus, targetStatus))
+        {
+            TempData["ErrorMessage"] = "Không thể chuyển trạng thái lịch hẹn theo thao tác đã chọn.";
+            return RedirectAfterUpdateAppointmentStatus(returnUrl);
+        }
+
+        appointment.Status = targetStatus;
+        await _context.SaveChangesAsync();
+
+        TempData["SuccessMessage"] = "Cập nhật trạng thái lịch hẹn thành công.";
+        return RedirectAfterUpdateAppointmentStatus(returnUrl);
+    }
+
     [AllowAnonymous]
     public async Task<IActionResult> PetDetail(int id)
     {
@@ -234,7 +290,9 @@ public class ManagementController : Controller
 
             if (!isStaffOrAdmin)
             {
-                fallbackPetQuery = fallbackPetQuery.Where(p => p.OwnerId == userId.Value);
+                fallbackPetQuery = fallbackPetQuery.Where(p =>
+                    p.OwnerId == userId.Value ||
+                    p.AdoptionContracts.Any(c => c.UserId == userId.Value && c.Status != "Cancelled"));
             }
 
             if (!string.IsNullOrWhiteSpace(petSpecies))
@@ -273,7 +331,9 @@ public class ManagementController : Controller
 
         if (!isStaffOrAdmin)
         {
-            petExistsQuery = petExistsQuery.Where(p => p.OwnerId == userId.Value);
+            petExistsQuery = petExistsQuery.Where(p =>
+                p.OwnerId == userId.Value ||
+                p.AdoptionContracts.Any(c => c.UserId == userId.Value && c.Status != "Cancelled"));
         }
 
         var petExists = await petExistsQuery.AnyAsync();
@@ -322,10 +382,27 @@ public class ManagementController : Controller
         return RedirectAfterCreateAppointment(returnUrl);
     }
 
-    public async Task<IActionResult> Appointments(string? status, DateTime? date, int? selectedServiceId)
+    public async Task<IActionResult> Appointments(string? status, DateTime? date, int? selectedServiceId, string? sortBy = "CreatedAt", string? sortDirection = "desc")
     {
         var currentUserId = await ResolveCurrentUserIdAsync();
         var isStaffOrAdmin = IsStaffOrAdmin();
+
+        if (!string.IsNullOrWhiteSpace(sortBy) && sortBy.Contains('|'))
+        {
+            var parts = sortBy.Split('|', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+            if (parts.Length == 2)
+            {
+                sortBy = parts[0];
+                sortDirection = parts[1];
+            }
+        }
+
+        var normalizedSortBy = string.Equals(sortBy, "AppointmentDateTime", StringComparison.OrdinalIgnoreCase)
+            ? "AppointmentDateTime"
+            : "CreatedAt";
+        var normalizedSortDirection = string.Equals(sortDirection, "asc", StringComparison.OrdinalIgnoreCase)
+            ? "asc"
+            : "desc";
 
         var appointmentsQuery = _context.Appointments
             .AsNoTracking()
@@ -355,8 +432,15 @@ public class ManagementController : Controller
             appointmentsQuery = appointmentsQuery.Where(a => a.AppointmentDateTime.Date == targetDate);
         }
 
-        var appointments = await appointmentsQuery
-            .OrderByDescending(a => a.AppointmentDateTime)
+        var sortedAppointmentsQuery = (normalizedSortBy, normalizedSortDirection) switch
+        {
+            ("AppointmentDateTime", "asc") => appointmentsQuery.OrderBy(a => a.AppointmentDateTime).ThenBy(a => a.CreatedAt),
+            ("AppointmentDateTime", _) => appointmentsQuery.OrderByDescending(a => a.AppointmentDateTime).ThenByDescending(a => a.CreatedAt),
+            ("CreatedAt", "asc") => appointmentsQuery.OrderBy(a => a.CreatedAt).ThenBy(a => a.AppointmentDateTime),
+            _ => appointmentsQuery.OrderByDescending(a => a.CreatedAt).ThenByDescending(a => a.AppointmentDateTime)
+        };
+
+        var appointments = await sortedAppointmentsQuery
             .Take(50)
             .Select(a => new AppointmentSummaryViewModel
             {
@@ -394,7 +478,9 @@ public class ManagementController : Controller
 
         if (!isStaffOrAdmin)
         {
-            petOptionsQuery = petOptionsQuery.Where(p => currentUserId.HasValue && p.OwnerId == currentUserId.Value);
+            petOptionsQuery = petOptionsQuery.Where(p =>
+                currentUserId.HasValue &&
+                (p.OwnerId == currentUserId.Value || p.AdoptionContracts.Any(c => c.UserId == currentUserId.Value && c.Status != "Cancelled")));
         }
 
         ViewBag.PetOptions = await petOptionsQuery
@@ -461,6 +547,8 @@ public class ManagementController : Controller
             Status = status,
             Date = date,
             SelectedServiceId = selectedServiceId,
+            SortBy = normalizedSortBy,
+            SortDirection = normalizedSortDirection,
             Appointments = appointments,
             AppointmentServices = appointmentServices
         };
@@ -525,6 +613,93 @@ public class ManagementController : Controller
         await _context.SaveChangesAsync();
 
         return AdoptionRequestResponse(true, "Đã gửi yêu cầu nhận nuôi thành công.");
+    }
+
+    [HttpPost]
+    [Authorize(Policy = RoleNames.StaffOrAdmin)]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> UpdateAdoptionRequestStatus(int requestId, string status, string? returnUrl)
+    {
+        if (requestId <= 0 || string.IsNullOrWhiteSpace(status))
+        {
+            TempData["ErrorMessage"] = "Dữ liệu duyệt yêu cầu nhận nuôi không hợp lệ.";
+            return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
+        }
+
+        var targetStatus = status.Trim();
+        if (!string.Equals(targetStatus, "Approved", StringComparison.OrdinalIgnoreCase)
+            && !string.Equals(targetStatus, "Rejected", StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["ErrorMessage"] = "Trạng thái duyệt yêu cầu nhận nuôi không hợp lệ.";
+            return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
+        }
+
+        var request = await _context.AdoptionRequests
+            .Include(r => r.Pet)
+            .Include(r => r.AdoptionContract)
+            .FirstOrDefaultAsync(r => r.RequestId == requestId);
+
+        if (request is null)
+        {
+            TempData["ErrorMessage"] = "Không tìm thấy yêu cầu nhận nuôi cần xử lý.";
+            return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
+        }
+
+        if (!string.Equals(request.Status, "Pending", StringComparison.OrdinalIgnoreCase))
+        {
+            TempData["ErrorMessage"] = "Yêu cầu này đã được xử lý trước đó.";
+            return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
+        }
+
+        var staffIdClaim = User.FindFirstValue("StaffId");
+        request.ReviewedByStaffId = int.TryParse(staffIdClaim, out var staffId) ? staffId : null;
+        request.ReviewedAt = DateTime.Now;
+
+        if (string.Equals(targetStatus, "Approved", StringComparison.OrdinalIgnoreCase))
+        {
+            request.Status = "Approved";
+            request.Pet.AdoptionStatus = "Adopted";
+            request.Pet.OwnerId = request.UserId;
+
+            if (request.AdoptionContract is null)
+            {
+                _context.AdoptionContracts.Add(new AdoptionContract
+                {
+                    RequestId = request.RequestId,
+                    PetId = request.PetId,
+                    UserId = request.UserId,
+                    SignedDate = DateTime.Now,
+                    AdoptionFee = 0,
+                    Status = "Active"
+                });
+            }
+
+            var otherPendingRequests = await _context.AdoptionRequests
+                .Where(r => r.PetId == request.PetId && r.RequestId != request.RequestId && r.Status == "Pending")
+                .ToListAsync();
+
+            foreach (var pending in otherPendingRequests)
+            {
+                pending.Status = "Rejected";
+                pending.ReviewedAt = DateTime.Now;
+                pending.ReviewedByStaffId = request.ReviewedByStaffId;
+            }
+
+            TempData["SuccessMessage"] = "Đã duyệt yêu cầu nhận nuôi thành công.";
+        }
+        else
+        {
+            request.Status = "Rejected";
+
+            var hasOtherPending = await _context.AdoptionRequests
+                .AnyAsync(r => r.PetId == request.PetId && r.RequestId != request.RequestId && r.Status == "Pending");
+
+            request.Pet.AdoptionStatus = hasOtherPending ? "Pending" : "Available";
+            TempData["SuccessMessage"] = "Đã từ chối yêu cầu nhận nuôi.";
+        }
+
+        await _context.SaveChangesAsync();
+        return RedirectAfterUpdateAdoptionRequestStatus(returnUrl);
     }
 
     public async Task<IActionResult> Adoptions(string? status)
@@ -687,6 +862,26 @@ public class ManagementController : Controller
         return RedirectToAction(nameof(Appointments));
     }
 
+    private IActionResult RedirectAfterUpdateAdoptionRequestStatus(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        return RedirectToAction(nameof(Adoptions));
+    }
+
+    private IActionResult RedirectAfterUpdateAppointmentStatus(string? returnUrl)
+    {
+        if (!string.IsNullOrWhiteSpace(returnUrl) && Url.IsLocalUrl(returnUrl))
+        {
+            return Redirect(returnUrl);
+        }
+
+        return RedirectToAction(nameof(Appointments));
+    }
+
     private IActionResult AdoptionRequestResponse(bool success, string message)
     {
         if (Request.IsAjaxRequest())
@@ -738,6 +933,33 @@ public class ManagementController : Controller
         }
 
         return normalized;
+    }
+
+    private static string? NormalizeAppointmentStatus(string? status)
+    {
+        if (string.IsNullOrWhiteSpace(status))
+        {
+            return null;
+        }
+
+        return status.Trim().ToLowerInvariant() switch
+        {
+            "pending" => "Pending",
+            "confirmed" => "Confirmed",
+            "completed" => "Completed",
+            "cancelled" => "Cancelled",
+            _ => null
+        };
+    }
+
+    private static bool CanTransitionAppointmentStatus(string currentStatus, string targetStatus)
+    {
+        return currentStatus switch
+        {
+            "Pending" => targetStatus is "Confirmed" or "Cancelled",
+            "Confirmed" => targetStatus is "Completed" or "Cancelled",
+            _ => false
+        };
     }
 
     [Authorize(Policy = RoleNames.StaffOrAdmin)]

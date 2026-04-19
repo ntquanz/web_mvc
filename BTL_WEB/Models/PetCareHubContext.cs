@@ -46,21 +46,18 @@ public partial class PetCareHubContext : DbContext
     public virtual DbSet<Vaccination> Vaccinations { get; set; }
 
     protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
-    {
-        if (!optionsBuilder.IsConfigured)
-        {
-        }
-    }
+#warning To protect potentially sensitive information in your connection string, you should move it out of source code. You can avoid scaffolding the connection string by using the Name= syntax to read it from configuration - see https://go.microsoft.com/fwlink/?linkid=2131148. For more guidance on storing connection strings, see https://go.microsoft.com/fwlink/?LinkId=723263.
+        => optionsBuilder.UseSqlServer("Data Source=DESKTOP-S6TLJ08\\SQLEXPRESS;Initial Catalog=PetCareHub;Integrated Security=True;Connect Timeout=30;Encrypt=True;Trust Server Certificate=True;Application Intent=ReadWrite;Multi Subnet Failover=False;Command Timeout=30");
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<AdoptionContract>(entity =>
         {
-            entity.HasKey(e => e.ContractId).HasName("PK__Adoption__C90D3409615E9507");
+            entity.HasKey(e => e.ContractId).HasName("PK__Adoption__C90D340975705C0A");
 
             entity.ToTable("Adoption_Contract");
 
-            entity.HasIndex(e => e.RequestId, "UQ__Adoption__33A8519B75DCD4C8").IsUnique();
+            entity.HasIndex(e => e.RequestId, "UQ__Adoption__33A8519BF738A164").IsUnique();
 
             entity.Property(e => e.ContractId).HasColumnName("ContractID");
             entity.Property(e => e.AdoptionFee).HasColumnType("decimal(18, 2)");
@@ -92,7 +89,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<AdoptionRequest>(entity =>
         {
-            entity.HasKey(e => e.RequestId).HasName("PK__Adoption__33A8519A8A41527C");
+            entity.HasKey(e => e.RequestId).HasName("PK__Adoption__33A8519A52D8E287");
 
             entity.ToTable("Adoption_Request");
 
@@ -129,7 +126,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Appointment>(entity =>
         {
-            entity.HasKey(e => e.AppointmentId).HasName("PK__Appointm__8ECDFCA2D10E99E8");
+            entity.HasKey(e => e.AppointmentId).HasName("PK__Appointm__8ECDFCA2B422BA16");
 
             entity.ToTable("Appointment");
 
@@ -189,11 +186,11 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Branch>(entity =>
         {
-            entity.HasKey(e => e.BranchId).HasName("PK__Branch__A1682FA527730DED");
+            entity.HasKey(e => e.BranchId).HasName("PK__Branch__A1682FA59E3ED9D2");
 
             entity.ToTable("Branch");
 
-            entity.HasIndex(e => e.BranchName, "UQ__Branch__3903DB0303813007").IsUnique();
+            entity.HasIndex(e => e.BranchName, "UQ__Branch__3903DB0302E8558A").IsUnique();
 
             entity.Property(e => e.BranchId).HasColumnName("BranchID");
             entity.Property(e => e.Address).HasMaxLength(255);
@@ -208,7 +205,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<MedicalRecord>(entity =>
         {
-            entity.HasKey(e => e.RecordId).HasName("PK__Medical___FBDF78C90AE4D866");
+            entity.HasKey(e => e.RecordId).HasName("PK__Medical___FBDF78C9700F261C");
 
             entity.ToTable("Medical_Record");
 
@@ -232,7 +229,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Payment>(entity =>
         {
-            entity.HasKey(e => e.PaymentId).HasName("PK__Payment__9B556A58020B0ABD");
+            entity.HasKey(e => e.PaymentId).HasName("PK__Payment__9B556A583FC98511");
 
             entity.ToTable("Payment");
 
@@ -260,7 +257,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Pet>(entity =>
         {
-            entity.HasKey(e => e.PetId).HasName("PK__Pet__48E53802176CA1BD");
+            entity.HasKey(e => e.PetId).HasName("PK__Pet__48E538023C3B8635");
 
             entity.ToTable("Pet");
 
@@ -301,7 +298,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<PetImage>(entity =>
         {
-            entity.HasKey(e => e.ImageId).HasName("PK__Pet_Imag__7516F4EC75652E5B");
+            entity.HasKey(e => e.ImageId).HasName("PK__Pet_Imag__7516F4EC2B6B1F8A");
 
             entity.ToTable("Pet_Image");
 
@@ -322,11 +319,11 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Role>(entity =>
         {
-            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3ACAE1FF5F");
+            entity.HasKey(e => e.RoleId).HasName("PK__Role__8AFACE3ACEBBA6BA");
 
             entity.ToTable("Role");
 
-            entity.HasIndex(e => e.RoleName, "UQ__Role__8A2B61603F81B31D").IsUnique();
+            entity.HasIndex(e => e.RoleName, "UQ__Role__8A2B6160C420D937").IsUnique();
 
             entity.Property(e => e.RoleId).HasColumnName("RoleID");
             entity.Property(e => e.Description).HasMaxLength(255);
@@ -335,7 +332,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Service>(entity =>
         {
-            entity.HasKey(e => e.ServiceId).HasName("PK__Service__C51BB0EA9C638CAA");
+            entity.HasKey(e => e.ServiceId).HasName("PK__Service__C51BB0EAF9B0FC9C");
 
             entity.ToTable("Service");
 
@@ -356,11 +353,11 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<ServiceCategory>(entity =>
         {
-            entity.HasKey(e => e.CategoryId).HasName("PK__Service___19093A2BE15EAC68");
+            entity.HasKey(e => e.CategoryId).HasName("PK__Service___19093A2B74C05101");
 
             entity.ToTable("Service_Category");
 
-            entity.HasIndex(e => e.CategoryName, "UQ__Service___8517B2E09BFA50EC").IsUnique();
+            entity.HasIndex(e => e.CategoryName, "UQ__Service___8517B2E07442D37C").IsUnique();
 
             entity.Property(e => e.CategoryId).HasColumnName("CategoryID");
             entity.Property(e => e.CategoryName).HasMaxLength(100);
@@ -369,11 +366,11 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Staff>(entity =>
         {
-            entity.HasKey(e => e.StaffId).HasName("PK__Staff__96D4AAF77462FA0E");
+            entity.HasKey(e => e.StaffId).HasName("PK__Staff__96D4AAF757B45B0A");
 
             entity.HasIndex(e => e.BranchId, "IX_Staff_BranchID");
 
-            entity.HasIndex(e => e.UserId, "UQ__Staff__1788CCADD6E6EE9B").IsUnique();
+            entity.HasIndex(e => e.UserId, "UQ__Staff__1788CCAD8C8E347C").IsUnique();
 
             entity.Property(e => e.StaffId).HasColumnName("StaffID");
             entity.Property(e => e.BranchId).HasColumnName("BranchID");
@@ -397,15 +394,15 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<User>(entity =>
         {
-            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCAC376095A6");
+            entity.HasKey(e => e.UserId).HasName("PK__User__1788CCAC79EBC98C");
 
             entity.ToTable("User");
 
             entity.HasIndex(e => e.RoleId, "IX_User_RoleID");
 
-            entity.HasIndex(e => e.Username, "UQ__User__536C85E41B6BA883").IsUnique();
+            entity.HasIndex(e => e.Username, "UQ__User__536C85E4DFACBA61").IsUnique();
 
-            entity.HasIndex(e => e.Email, "UQ__User__A9D10534DA877892").IsUnique();
+            entity.HasIndex(e => e.Email, "UQ__User__A9D10534E1CE96D3").IsUnique();
 
             entity.Property(e => e.UserId).HasColumnName("UserID");
             entity.Property(e => e.CreatedAt)
@@ -429,7 +426,7 @@ public partial class PetCareHubContext : DbContext
 
         modelBuilder.Entity<Vaccination>(entity =>
         {
-            entity.HasKey(e => e.VaccinationId).HasName("PK__Vaccinat__466BCFA7ECDF7182");
+            entity.HasKey(e => e.VaccinationId).HasName("PK__Vaccinat__466BCFA7C0666F08");
 
             entity.ToTable("Vaccination");
 

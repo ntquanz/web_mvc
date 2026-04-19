@@ -227,10 +227,12 @@
             '/LayoutPetcare/images/gallery-6.jpg',
             '/LayoutPetcare/images/gallery-7.jpg'
         ];
-        const branchIdByName = Object.fromEntries(branches.map(b => [b.branchName, b.branchId]));
+        const branchIdByName = Object.fromEntries(
+            branches.map(b => [normalizeText(b.branchName).replaceAll(' ', ''), b.branchId])
+        );
         const normalizedPets = pets.map(p => ({
             ...p,
-            branchId: p.branchId ?? branchIdByName[p.branchName]
+            branchId: p.branchId ?? branchIdByName[normalizeText(p.branchName).replaceAll(' ', '')]
         }));
 
         const searchInput = document.getElementById('searchInput');
@@ -326,6 +328,20 @@
             return labels[key] || status || 'Chưa cập nhật';
         }
 
+        function normalizeText(value) {
+            return String(value ?? '')
+                .normalize('NFD')
+                .replace(/[\u0300-\u036f]/g, '')
+                .toLowerCase();
+        }
+
+        function normalizeGender(value) {
+            const key = normalizeText(value).trim();
+            if (key === 'duc' || key === 'male' || key === 'm') return 'male';
+            if (key === 'cai' || key === 'female' || key === 'f') return 'female';
+            return key;
+        }
+
         function render(list) {
             if (!list.length) {
                 grid.innerHTML = '<div class="empty-box">Không có thú cưng phù hợp bộ lọc.</div>';
@@ -354,17 +370,20 @@
         }
 
         function applyFilter() {
-            const searchValue = (searchInput.value || '').trim().toLowerCase();
-            const speciesValue = speciesFilter.value;
-            const genderValue = genderFilter.value;
+            const searchValue = normalizeText((searchInput.value || '').trim());
+            const speciesValue = normalizeText(speciesFilter.value);
+            const genderValue = normalizeGender(genderFilter.value);
             const branchValue = branchFilter.value;
 
             console.log('Filter values:', { searchValue, speciesValue, genderValue, branchValue });
 
             const filtered = normalizedPets.filter(p => {
-                const matchName = !searchValue || p.name.toLowerCase().includes(searchValue);
-                const matchSpecies = !speciesValue || p.species === speciesValue;
-                const matchGender = !genderValue || p.gender === genderValue;
+                const matchName = !searchValue
+                    || normalizeText(p.name).includes(searchValue)
+                    || normalizeText(p.species).includes(searchValue)
+                    || normalizeText(p.breed).includes(searchValue);
+                const matchSpecies = !speciesValue || normalizeText(p.species) === speciesValue;
+                const matchGender = !genderValue || normalizeGender(p.gender) === genderValue;
                 const matchBranch = !branchValue || String(p.branchId) === String(branchValue);
                 return matchName && matchSpecies && matchGender && matchBranch;
             });
